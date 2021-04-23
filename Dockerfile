@@ -1,4 +1,4 @@
-FROM maven:3.8.1-jdk-8
+FROM maven:3.8.1-jdk-11
 
 
 # Install Storm.
@@ -34,6 +34,6 @@ RUN chown -R "$STORM_USER" "$STORM_CONF_DIR" "$STORM_DATA_DIR" "$STORM_LOG_DIR"
 ADD . /topology
 WORKDIR /topology
 
-RUN mvn clean package
+RUN mvn clean package && rm storm.yaml
 
-ENTRYPOINT sh -c "tail -f /dev/null"
+ENTRYPOINT storm jar target/storm-kafka-client-examples-2.2.0.jar org.apache.storm.kafka.spout.KafkaSpoutStormBoltTopology

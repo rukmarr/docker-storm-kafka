@@ -52,7 +52,7 @@ import org.apache.storm.tuple.Values;
 public class KafkaSpoutStormBoltTopology {
 
     private static final String TOPIC_0_STREAM = "topic_0_stream";
-    private static final String KAFKA_LOCAL_BROKER = "localhost:9092";
+    private static final String KAFKA_LOCAL_BROKER = "kafka:9092";
     public static final String TOPIC_0 = "wordCount-topic";
 
     public static void main(String[] args) throws Exception {
@@ -75,6 +75,31 @@ public class KafkaSpoutStormBoltTopology {
         return config;
     }
 
+    // Maps a storm tuple to redis key and value
+    private static class WordCountStoreMapper implements RedisStoreMapper {
+        private final RedisDataTypeDescription description;
+        private final String hashKey = "wordCountHashSet";
+
+        WordCountStoreMapper() {
+            description = new RedisDataTypeDescription(RedisDataTypeDescription.RedisDataType.HASH, hashKey);
+        }
+
+        @Override
+        public RedisDataTypeDescription getDataTypeDescription() {
+            return description;
+        }
+
+        @Override
+        public String getKeyFromTuple(ITuple tuple) {
+            return tuple.getStringByField("word");
+        }
+
+        @Override
+        public String getValueFromTuple(ITuple tuple) {
+            return String.valueOf(tuple.getIntegerByField("count"));
+        }
+    }
+
     protected StormTopology getTopologyKafkaSpout(KafkaSpoutConfig<String, String> spoutConfig) {
         final TopologyBuilder tp = new TopologyBuilder();
         tp.setSpout("KafkaSpout", new KafkaSpout<>(getKafkaSpoutConfig(KAFKA_LOCAL_BROKER)), 1);
@@ -84,9 +109,9 @@ public class KafkaSpoutStormBoltTopology {
 
 
         JedisPoolConfig poolConfig = new JedisPoolConfig.Builder()
-            .setHost("127.0.0.1").setPort(6379).build();
+            .setHost("redis").setPort(6379).build();
         // Storm tuple to redis key-value mapper
-        RedisStoreMapper storeMapper = new WordCountStoreMapper();
+        RedisStoreMapper storeMapper = new WordCountStoreMapper();  // ????
 
         tp.setBolt("RedisStoreBolt", new RedisStoreBolt(poolConfig, storeMapper), 12).shuffleGrouping("StormCountBolt");
         return tp.createTopology();
@@ -125,31 +150,6 @@ public class KafkaSpoutStormBoltTopology {
         @Override
         public Map<String, Object> getComponentConfiguration() {
             return null;
-        }
-    }
-
-    // Maps a storm tuple to redis key and value
-    private static class WordCountStoreMapper implements RedisStoreMapper {
-        private final RedisDataTypeDescription description;
-        private final String hashKey = "wordCountHashSet";
-
-        WordCountStoreMapper() {
-            description = new RedisDataTypeDescription(RedisDataTypeDescription.RedisDataType.HASH, hashKey);
-        }
-
-        @Override
-        public RedisDataTypeDescription getDataTypeDescription() {
-            return description;
-        }
-
-        @Override
-        public String getKeyFromTuple(ITuple tuple) {
-            return tuple.getStringByField("word");
-        }
-
-        @Override
-        public String getValueFromTuple(ITuple tuple) {
-            return String.valueOf(tuple.getIntegerByField("count"));
         }
     }
 }

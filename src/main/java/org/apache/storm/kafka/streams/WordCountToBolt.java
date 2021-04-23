@@ -30,6 +30,32 @@ import org.apache.storm.tuple.ITuple;
  * external bolt (sink).
  */
 public class WordCountToBolt {
+
+    // Maps a storm tuple to redis key and value
+    private static class WordCountStoreMapper implements RedisStoreMapper {
+        private final RedisDataTypeDescription description;
+        private final String hashKey = "wordCount";
+
+        WordCountStoreMapper() {
+            description = new RedisDataTypeDescription(RedisDataTypeDescription.RedisDataType.HASH, hashKey);
+        }
+
+        @Override
+        public RedisDataTypeDescription getDataTypeDescription() {
+            return description;
+        }
+
+        @Override
+        public String getKeyFromTuple(ITuple tuple) {
+            return tuple.getStringByField("key");
+        }
+
+        @Override
+        public String getValueFromTuple(ITuple tuple) {
+            return String.valueOf(tuple.getLongByField("value"));
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         StreamBuilder builder = new StreamBuilder();
 
@@ -66,30 +92,5 @@ public class WordCountToBolt {
         }
         config.setNumWorkers(1);
         StormSubmitter.submitTopologyWithProgressBar(topoName, config, builder.build());
-    }
-
-    // Maps a storm tuple to redis key and value
-    private static class WordCountStoreMapper implements RedisStoreMapper {
-        private final RedisDataTypeDescription description;
-        private final String hashKey = "wordCount";
-
-        WordCountStoreMapper() {
-            description = new RedisDataTypeDescription(RedisDataTypeDescription.RedisDataType.HASH, hashKey);
-        }
-
-        @Override
-        public RedisDataTypeDescription getDataTypeDescription() {
-            return description;
-        }
-
-        @Override
-        public String getKeyFromTuple(ITuple tuple) {
-            return tuple.getStringByField("key");
-        }
-
-        @Override
-        public String getValueFromTuple(ITuple tuple) {
-            return String.valueOf(tuple.getLongByField("value"));
-        }
     }
 }
