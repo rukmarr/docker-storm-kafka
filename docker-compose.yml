@@ -1,0 +1,43 @@
+version: "3"
+services:
+  zookeeper:
+    image: zookeeper
+    networks:
+      - devnet
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "wordCount-topic:1:1"
+    networks:
+      - devnet
+  nimbus:
+    image: storm
+    networks:
+      - devnet
+    command: storm nimbus
+  supervisor:
+    image: storm
+    networks:
+      - devnet
+    command: storm supervisor
+  stormui:
+    image: storm
+    ports:
+      - "8000:8000"
+      - "8080:8080"
+    networks:
+      - devnet
+    command: storm ui
+  topology:
+    # image: maven:3.8.1-jdk-8
+    build: .
+    networks:
+      - devnet
+    entrypoint: sh -c "tail -f /dev/null"
+
+networks:
+  devnet:
